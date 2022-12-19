@@ -16,6 +16,15 @@ function App() {
   );
 }
 
+/*
+    TODO 19/12/2022:
+
+    -Enforce minimum and maximum length by calculating length of noodle based on perimeter of circles
+    -Enforce bending when semicircle colides with bowl
+    -Function descriptions
+    -And you're DONE!!
+*/ 
+
 class NoodleApp extends React.Component {
   canvas = null; 
   constructor(props) {
@@ -27,35 +36,55 @@ class NoodleApp extends React.Component {
               width: 500, 
           },
           noodleParameters: {
+              noodleCount: 450,
               width: 20,
               minLength: 100,
               maxLength: 200,
               minRadius: 30
-          }
+          },
+          
 
-      }
+      } 
   }
 
-
-  updateParams = (event) => {
-
-    event.preventDefault(); 
-    console.log('update params: ', event);
-
-  }
-
-  renderNoodles = (event)=> {
-    event.preventDefault(); 
+  componentDidMount () {
 
     this.canvas = new Canvas({
         height: this.state.canvasParameters.height,
         width: this.state.canvasParameters.width,
         noodleParams: this.state.noodleParameters,
         domSelector: '#canvas',
+    });
+
+    this.canvas.draw(); //initial noodle bowl
+  }
+
+  handleChange = (event) => {
+
+    
+    console.log('name: ', event.target.name);
+
+    let noodleParameters = this.state.noodleParameters;
+    noodleParameters[event.target.name] = event.target.value;
+
+    this.setState({
+        ...this.state,
+        noodleParameters
     }); 
 
-    this.canvas.draw(); 
-   
+  }
+
+  renderNoodles = (event)=> {
+    event.preventDefault(); 
+
+    if(this.canvas){
+        this.canvas.draw({
+            height: this.state.canvasParameters.height,
+            width: this.state.canvasParameters.width,
+            noodleParams: this.state.noodleParameters,
+            domSelector: '#canvas',
+        }); 
+    }
   }
 
   render() {
@@ -71,10 +100,21 @@ class NoodleApp extends React.Component {
                 <form onSubmit={this.renderNoodles} className='options-form'>
 
                     <div className='option'>
+                        <label htmlFor='count'>
+                            Noodle count
+                        </label>
+                        <input 
+                            name='noodleCount' 
+                            type='number' 
+                            value={this.state.noodleParameters.noodleCount} 
+                            onChange={this.handleChange} /> 
+                    </div>
+
+                    <div className='option'>
                         <label htmlFor='width'>
                             Noodle width
                         </label>
-                        <input name='width' type='number' defaultValue={this.state.noodleParameters.width} />
+                        <input name='width' type='number' value={this.state.noodleParameters.width} />
                     </div>
                     
 
@@ -82,7 +122,7 @@ class NoodleApp extends React.Component {
                         <label htmlFor='minLength'>
                             Noodle min length
                         </label>
-                        <input name='minLength' type='number' defaultValue={this.state.noodleParameters.minLength} />
+                        <input name='minLength' type='number' value={this.state.noodleParameters.minLength} />
                     </div>
                     
 
@@ -149,6 +189,7 @@ console.log('script js has been loaded');
 const gridHeight = 500;
 const gridWidth = 500; 
 const defaultNoodleParams = {
+    noodleCount: 450,
     width: 20,
     minLength: 100,
     maxLength: 200,
@@ -175,7 +216,6 @@ class Canvas {
         console.log('options: ', options);
         this.height = height; 
         this.width = width; 
-        this.noodleParams = noodleParams; 
         this.domSelector = domSelector || this.domSelector; 
         this.domElement = document.querySelector(this.domSelector);
         this.noodleParams = noodleParams || this.noodleParams; 
@@ -187,9 +227,24 @@ class Canvas {
         }
     }
 
-    draw () {
+    draw (options = {
+        height: gridHeight,
+        width: gridWidth,
+        domSelector: '#canvas',
+        noodleParams: defaultNoodleParams
+    }) {
+
+        if(options){ //for cases where there is a redraw with new params
+            const {height, width, noodleParams} = options; 
+            this.height = height || this.height; 
+            this.width = width || this.width; 
+            this.noodleParams = noodleParams || this.noodleParams;
+        }
         
         if(this.ctx){
+
+            //clear
+            this.ctx.clearRect(0,0,this.width, this.height);
 
             this.ctx.fillStyle = 'rgb(200, 0, 0)'; 
 
@@ -250,7 +305,7 @@ class NoodleBowl {
         let prevStrokeStyle = ctx.strokeStyle; 
 
         ctx.lineWidth = this.thickness; 
-        ctx.strokeStyle = 'grey';
+        ctx.strokeStyle = 'gray';
         
         ctx.beginPath();
         ctx.arc(this.xCoord, this.yCoord, this.radius-(this.thickness/2), 0, 2 * Math.PI); //note angles in arc function are in radians -  so would need to convert if passed as degrees from user
@@ -271,7 +326,7 @@ class NoodleBowl {
 
         //noodles should be drawn within bowl - it makes more sense than drawing them from canvas class 
         let noodles = [];
-        let noodleCount = 450; //ideal amount of noodles seems to be 450
+        let noodleCount = this.noodleParams.noodleCount || 450; //ideal amount of noodles seems to be 450
         let alternateOdds = 3; 
         for(var i = 0; i < noodleCount ; i++){
 
@@ -298,37 +353,6 @@ class NoodleBowl {
         
     }
 
-}
-
-class NoodleBatch {
-    /* 
-        Noodles will be drawn in batches. 
-        This to achieve the requirement of noodles passing over and under each other. 
-
-        This will be achieved by splitting the rendering of each noodle into N parts. i.e staggered rendering
-        It will go as follows:
-        - section 1/N of a noodle1 gets drawn, it'll be at the top. 
-        - section 1/N of noodle2 gets drawn, it'll now be at the top
-        ...
-        - section N/N of Noodle1 gets drawn, and it'll be higher than section N-1/N of noodle 2 and all preceding sections
-
-        Thus achieving an overlapping noodle effect
-
-        To make noodles meet bowl at tangent, there are options:
-        -draw parts of the noodles as circles. 
-        -The initial part of the noodle will be a circle meeting the bowl at its edge
-        -The rest of noodle will be built around that. 
-        -So the noodle can be drawn as follows:
-            - section 3 first (the circle)
-            - Then sections 1-2 
-            - Then sections 4 - 5
-
-        -So the noodle will have 2 types of sections
-            - circle section
-            - bezier sections
-
-        - for now, let's just draw the first noodle
-    */
 }
 
 class Noodle {
@@ -435,6 +459,10 @@ class Noodle {
         this.ctx.lineWidth = prevLineWidth;
         this.ctx.globalCompositeOperation = prevGlobalCompisiteOperation; 
 
+        //calculate length
+        let angleDiff = Math.abs(endAngle-startAngle); 
+        let length = angleDiff*r;
+
         //calculate start and end coordinates and put in sectionCoordinates
         let startPoint = {
             x: xc + (r*Math.cos(startAngle)),
@@ -463,7 +491,8 @@ class Noodle {
             radius: r,
             angle,
             startAngle,
-            bowlContact
+            bowlContact,
+            length
         };
 
         //draw them just to see
@@ -536,6 +565,9 @@ class Noodle {
 
         this.ctx.lineWidth = prevLineWidth;
         this.ctx.globalCompositeOperation = prevGlobalCompisiteOperation;
+
+        //TODO: calculate length of tangent
+
     }
 
     drawNCircleSection (sectionIndex = 0) {
@@ -594,7 +626,11 @@ class Noodle {
         this.ctx.stroke();
 
         this.ctx.lineWidth = prevLineWidth;
-        this.ctx.globalCompositeOperation = prevGlobalCompisiteOperation; 
+        this.ctx.globalCompositeOperation = prevGlobalCompisiteOperation;
+        
+        //calculate length
+        let angleDiff = Math.abs(newEndAngle-newStartAngle); 
+        let length = angleDiff*rc1;
 
         //store in this.additionalSections
         this.additionCircleSections.push({
@@ -604,7 +640,8 @@ class Noodle {
             startAngle: newStartAngle,
             endAngle: newEndAngle,
             thetaC: thetaC1,
-            angleSum
+            angleSum,
+            length
         });
     }
 
@@ -699,6 +736,9 @@ class Noodle {
         this.ctx.globalCompositeOperation = prevGlobalCompisiteOperation; 
 
         //store in this.additionalSections
+        //calculate length
+        let angleDiff = Math.abs(newEndAngle-newStartAngle); 
+        let length = angleDiff*rc1;
         angleSum = angleSum+rotation-(180* (Math.PI / 180)); 
         this.additionCircleSections.push({
             rc: rc1,
@@ -709,7 +749,8 @@ class Noodle {
             thetaC: thetaC1,
             angleSum,
             rotation: rotation || 0,
-            startIncrement: distanceMD >= distanceND ? (90* (Math.PI / 180)) : (-90* (Math.PI / 180)) 
+            startIncrement: distanceMD >= distanceND ? (90* (Math.PI / 180)) : (-90* (Math.PI / 180)) ,
+            length
         });
 
         //demo line
