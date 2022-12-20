@@ -362,7 +362,7 @@ class NoodleBowl {
             let alternate = utilities.generateRandomInteger(0,alternateOdds) === alternateOdds;
             noodle.drawNextCircleSection(alternate);
             noodle.drawNextCircleSection(alternate); 
-            noodle.drawNextCircleSection(alternate); 
+            // noodle.drawNextCircleSection(alternate); 
             // noodle.drawNextCircleSection(alternate); 
             // noodle.drawNextCircleSection(alternate); 
             
@@ -901,10 +901,10 @@ class Noodle {
         //     newEndAngle = angleSum + (Math.PI/2) + startIncrement;
         // }
 
-        let angleAdjustment = alternateRotation ? 90 : 90; 
+        let angleAdjustment = 90; 
         let rc1 = utilities.generateRandomInteger(this.minRadius, 90); 
         if(!prevSection.genesis){
-            angleAdjustment = distanceMD >= distanceND ? angleAdjustment : -angleAdjustment; 
+            angleAdjustment = distanceMD >= distanceND ? -90 : -90; 
             angleSum = prevSection.angleSum+angleAdjustment*(Math.PI/180); 
         }else{
             angleSum = prevSection.angleSum -90*(Math.PI/180); //for first circle 
