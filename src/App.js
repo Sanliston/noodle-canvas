@@ -852,6 +852,12 @@ class Noodle {
         let distanceMD = utilities.getDistanceBetween2DPoints(xm, xd, ym, yd);
         let distanceND = utilities.getDistanceBetween2DPoints(xn, xd, yn, yd);
         let rotation = distanceMD >= distanceND ? -(Math.PI/2) : (Math.PI/2); //so its at a tangent to the center of the previous circle
+
+        // if(!prevSection.genesis){
+
+        //     rotation = distanceMD >= distanceND ? -45*(Math.PI/180) : 45*(Math.PI/180);
+
+        // }
     
         let startIncrement = 0; 
         let angleSum = prevSection.angleSum + prevSection.endAngle; 
@@ -877,17 +883,29 @@ class Noodle {
         let newStartAngle = 0 //angleSum - (Math.PI/2) + startIncrement;
         let newEndAngle = 2*Math.PI//angleSum + startIncrement;
 
+        let startAdjustment = distanceMD >= distanceND ? -(Math.PI/2) : (Math.PI);
+        let endAdjustment = distanceMD >= distanceND ? (Math.PI) : -(Math.PI);
+
+        if(!prevSection.genesis){
+            startAdjustment = distanceMD >= distanceND ? -(Math.PI/2)+(Math.PI) : (Math.PI);
+            endAdjustment = distanceMD >= distanceND ? (Math.PI) : -(Math.PI);
+        }
+
+        //TODO: 20/12/2022 CURRENT FOCUS HERE
+        newStartAngle = prevSection.angleSum+rotation+startAdjustment;
+        newEndAngle = distanceMD >= distanceND ? prevSection.angleSum+rotation-(Math.PI) : prevSection.angleSum+rotation;
+
         // if(distanceMD >= distanceND){
         //     //reverse the start angles
         //     newStartAngle =  angleSum + startIncrement;
         //     newEndAngle = angleSum + (Math.PI/2) + startIncrement;
         // }
 
-        let angleAdjustment = alternateRotation ? -90 : -90; 
+        let angleAdjustment = alternateRotation ? 90 : 90; 
         let rc1 = utilities.generateRandomInteger(this.minRadius, 90); 
         if(!prevSection.genesis){
             angleAdjustment = distanceMD >= distanceND ? angleAdjustment : -angleAdjustment; 
-            angleSum = angleSum+angleAdjustment*(Math.PI/180); 
+            angleSum = prevSection.angleSum+angleAdjustment*(Math.PI/180); 
         }else{
             angleSum = prevSection.angleSum -90*(Math.PI/180); //for first circle 
         }
