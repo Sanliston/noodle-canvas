@@ -36,7 +36,7 @@ class NoodleApp extends React.Component {
               width: 500, 
           },
           noodleParameters: {
-              noodleCount: 450,
+              noodleCount: 2,
               width: 20,
               minLength: 100,
               maxLength: 200,
@@ -49,14 +49,17 @@ class NoodleApp extends React.Component {
 
   componentDidMount () {
 
-    this.canvas = new Canvas({
-        height: this.state.canvasParameters.height,
-        width: this.state.canvasParameters.width,
-        noodleParams: this.state.noodleParameters,
-        domSelector: '#canvas',
-    });
-
-    this.canvas.draw(); //initial noodle bowl
+    if(!this.canvas){
+        this.canvas = new Canvas({
+            height: this.state.canvasParameters.height,
+            width: this.state.canvasParameters.width,
+            noodleParams: this.state.noodleParameters,
+            domSelector: '#canvas',
+        });
+    
+        this.canvas.draw(); //initial noodle bowl
+    }
+    
   }
 
   handleChange = (event) => {
@@ -78,6 +81,9 @@ class NoodleApp extends React.Component {
     event.preventDefault(); 
 
     if(this.canvas){
+        console.log('drawing canvas on render');
+        this.canvas.reset(); 
+
         this.canvas.draw({
             height: this.state.canvasParameters.height,
             width: this.state.canvasParameters.width,
@@ -189,7 +195,7 @@ console.log('script js has been loaded');
 const gridHeight = 500;
 const gridWidth = 500; 
 const defaultNoodleParams = {
-    noodleCount: 450,
+    noodleCount: 1,
     width: 20,
     minLength: 100,
     maxLength: 200,
@@ -210,6 +216,8 @@ class Canvas {
         domSelector: '#canvas',
         noodleParams: defaultNoodleParams
     }) {
+
+        console.log('Passed options: ', options);
 
         const {height, width, noodleParams, domSelector, styles} = options; 
 
@@ -265,6 +273,11 @@ class Canvas {
 
             bowl.draw(); //noodles included of course
         }
+    }
+
+    reset(){
+        this.ctx.clearRect(0,0,this.width, this.height);
+        
     }
 
 }
@@ -348,7 +361,11 @@ class NoodleBowl {
 
             let alternate = utilities.generateRandomInteger(0,alternateOdds) === alternateOdds;
             noodle.drawNextCircleSection(alternate);
-            //noodle.drawNextCircleSection(); 
+            noodle.drawNextCircleSection(alternate); 
+            noodle.drawNextCircleSection(alternate); 
+            // noodle.drawNextCircleSection(alternate); 
+            // noodle.drawNextCircleSection(alternate); 
+            
         }
         
     }
@@ -394,7 +411,6 @@ class Noodle {
 
         if(section == 1 && this.boundaryCircle){
             this.#drawCircleTangent(); 
-            this.#drawBezierSection(); 
         }
         
 
@@ -641,79 +657,18 @@ class Noodle {
             endAngle: newEndAngle,
             thetaC: thetaC1,
             angleSum,
-            length
+            length,
+            genesis: true
         });
     }
 
     drawNextCircleSection(alternateRotation=false) {
 
         //drawing the second semicircle
-        let xm = this.circleSectionCoordinates.startPoint.x;
-        let ym = this.circleSectionCoordinates.startPoint.y;
-
-        let xn = this.circleSectionCoordinates.endPoint.x;
-        let yn = this.circleSectionCoordinates.endPoint.y;
-
-        let xd = this.circleSectionCoordinates.bowlContact.x;
-        let yd = this.circleSectionCoordinates.bowlContact.y;
-
-        let rc = this.circleSectionCoordinates.radius;
-        let angle = this.circleSectionCoordinates.startAngle; 
-
-        let xt = this.circleSectionCoordinates.pointOnTangent.x;
-        let yt = this.circleSectionCoordinates.pointOnTangent.y;
-        let thetaT = this.circleSectionCoordinates.pointOnTangent.thetaT; 
-
-        //calculate distances between (xm, ym) -- should be saved as constant so it only gets calculated once per noodle
-        let distanceMD = utilities.getDistanceBetween2DPoints(xm, xd, ym, yd);
-        let distanceND = utilities.getDistanceBetween2DPoints(xn, xd, yn, yd);
-        let rotation = distanceMD >= distanceND ? -(Math.PI/2) : (Math.PI/2);
         let index = this.additionCircleSections.length; //lengths don't start at 0 like arrays. 
-        let prevStartAngle = rotation; 
-        let prevEndAngle = rotation; 
-        let startIncrement = 0; 
-
-        if(index > 0){
-
-            let prevSection = this.additionCircleSections[index-1]; 
-            
-            //xt is tangent along previous semicircle at 90 degrees or -90 degrees from start at 0
-            prevStartAngle = prevSection.startAngle; 
-            prevEndAngle = prevSection.endAngle
-            let prevAngleDiff = prevEndAngle - prevStartAngle; 
-            xt = prevSection.xc + (prevSection.rc*Math.cos(prevSection.angleSum+rotation));
-            yt = prevSection.yc + (prevSection.rc*Math.sin(prevSection.angleSum+rotation)); 
-            rc = prevSection.rc;
-            startIncrement = prevSection.startIncrement || startIncrement; 
-            
-            thetaT = prevSection.angleSum; 
-
-        }
-
-        
-
-        //transform (xt, yt) coordinates secondCircleRadius away in a 90 degree direction
-        let angleAdjustment = distanceMD >= distanceND ? 90 : -90; 
-        let thetaC1 = 0;
-
-        rotation = alternateRotation ? -rotation : rotation; //draw circle center outwards of prev circle if alternate rotation
-        let angleSum = thetaT; 
-
-        startIncrement = alternateRotation ? startIncrement - rotation : startIncrement; 
-
-        let newStartAngle =  angleSum - (Math.PI/2) + startIncrement;
-        let newEndAngle = angleSum + startIncrement;
-
-        if(distanceMD >= distanceND){
-            //reverse the start angles
-            newStartAngle =  angleSum + startIncrement;
-            newEndAngle = angleSum + (Math.PI/2) + startIncrement;
-        }
-
-        let rc1 = utilities.generateRandomInteger(this.minRadius, 90); 
-        
-        let xc1 = (xt)+(rc1*Math.cos(angleSum+rotation)); 
-        let yc1 = (yt)+(rc1*Math.sin(angleSum+rotation));
+        let prevSection = this.additionCircleSections[index-1]
+        console.log('index: ', index, ' prevSection: ', prevSection);
+        let {rc1, xc1, yc1, newStartAngle, newEndAngle, rotation, angleSum , startIncrement, thetaC1} = this.#getNextSectionParameters2(prevSection);
 
         //check if any point in the new semi-circle (i.e only for start and end angles) colides with boundary. 
         //If so - reverse the rotation. And check again. If still colides, don't draw
@@ -740,6 +695,7 @@ class Noodle {
         let angleDiff = Math.abs(newEndAngle-newStartAngle); 
         let length = angleDiff*rc1;
         angleSum = angleSum+rotation-(180* (Math.PI / 180)); 
+
         this.additionCircleSections.push({
             rc: rc1,
             xc: xc1,
@@ -749,7 +705,7 @@ class Noodle {
             thetaC: thetaC1,
             angleSum,
             rotation: rotation || 0,
-            startIncrement: distanceMD >= distanceND ? (90* (Math.PI / 180)) : (-90* (Math.PI / 180)) ,
+            startIncrement ,
             length
         });
 
@@ -787,8 +743,190 @@ class Noodle {
         //this.ctx.strokeStyle = prevStrokeStyle; 
     }
 
-    #drawBezierSection () {
-        /*Bezier section*/
+    #getNextSectionParameters (prevSection, alternateRotation = false) {
+        /*Calculates next parameters given the previous parameters */
+
+        let xm = this.circleSectionCoordinates.startPoint.x;
+        let ym = this.circleSectionCoordinates.startPoint.y;
+
+        let xn = this.circleSectionCoordinates.endPoint.x;
+        let yn = this.circleSectionCoordinates.endPoint.y;
+
+        let xd = this.circleSectionCoordinates.bowlContact.x;
+        let yd = this.circleSectionCoordinates.bowlContact.y;
+
+        let rc = this.circleSectionCoordinates.radius;
+        let angle = this.circleSectionCoordinates.startAngle; 
+
+        let xt = this.circleSectionCoordinates.pointOnTangent.x;
+        let yt = this.circleSectionCoordinates.pointOnTangent.y;
+        let thetaT = this.circleSectionCoordinates.pointOnTangent.thetaT; 
+
+        //calculate distances between (xm, ym) -- should be saved as constant so it only gets calculated once per noodle
+        let distanceMD = utilities.getDistanceBetween2DPoints(xm, xd, ym, yd);
+        let distanceND = utilities.getDistanceBetween2DPoints(xn, xd, yn, yd);
+        let rotation = distanceMD >= distanceND ? -(Math.PI/2) : (Math.PI/2);
+        
+        let prevStartAngle = rotation; 
+        let prevEndAngle = rotation; 
+        let startIncrement = 0; 
+
+        
+            
+        //xt is tangent along previous semicircle at 90 degrees or -90 degrees from start at 0
+        prevStartAngle = prevSection.startAngle; 
+        prevEndAngle = prevSection.endAngle
+        let prevAngleDiff = prevEndAngle - prevStartAngle; 
+        xt = prevSection.xc + (prevSection.rc*Math.cos(prevSection.angleSum+rotation));
+        yt = prevSection.yc + (prevSection.rc*Math.sin(prevSection.angleSum+rotation)); 
+        rc = prevSection.rc;
+        startIncrement = prevSection.startIncrement || startIncrement; 
+        
+        thetaT = prevSection.angleSum; 
+
+        
+
+        
+
+        //transform (xt, yt) coordinates secondCircleRadius away in a 90 degree direction
+        let angleAdjustment = distanceMD >= distanceND ? 90 : -90; 
+        let thetaC1 = 0;
+
+        rotation = alternateRotation ? -rotation : rotation; //draw circle center outwards of prev circle if alternate rotation
+        let angleSum = thetaT; 
+
+        startIncrement = alternateRotation ? startIncrement - rotation : startIncrement; 
+
+        let newStartAngle =  angleSum - (Math.PI/2) + startIncrement;
+        let newEndAngle = angleSum + startIncrement;
+
+        if(distanceMD >= distanceND){
+            //reverse the start angles
+            newStartAngle =  angleSum + startIncrement;
+            newEndAngle = angleSum + (Math.PI/2) + startIncrement;
+        }
+
+        let rc1 = utilities.generateRandomInteger(this.minRadius, 90); 
+        
+        let xc1 = (xt)+(rc1*Math.cos(angleSum+rotation)); 
+        let yc1 = (yt)+(rc1*Math.sin(angleSum+rotation));
+
+        startIncrement = distanceMD >= distanceND ? (90* (Math.PI / 180)) : (-90* (Math.PI / 180))
+        return {
+            rc1,
+            xc1,
+            yc1,
+            newStartAngle,
+            newEndAngle,
+            rotation,
+            angleSum,
+            startIncrement,
+            thetaC1,
+        };
+    }
+
+    #getNextSectionParameters2 (prevSection, alternateRotation = false) {
+        /*Calculates next parameters given the previous parameters */
+
+
+        let XC = this.circleSectionCoordinates.center.x; //bowl center x
+        let YC = this.circleSectionCoordinates.center.y; //bowl center y
+
+        let xm = this.circleSectionCoordinates.startPoint.x;
+        let ym = this.circleSectionCoordinates.startPoint.y;
+
+        let xn = this.circleSectionCoordinates.endPoint.x;
+        let yn = this.circleSectionCoordinates.endPoint.y;
+
+        let xd = this.circleSectionCoordinates.bowlContact.x;
+        let yd = this.circleSectionCoordinates.bowlContact.y;
+
+        let rc = this.circleSectionCoordinates.radius;
+        let angle = this.circleSectionCoordinates.startAngle; 
+
+        let xt = this.circleSectionCoordinates.pointOnTangent.x;
+        let yt = this.circleSectionCoordinates.pointOnTangent.y;
+        let thetaT = this.circleSectionCoordinates.pointOnTangent.thetaT; 
+
+        //calculate distances between (xm, ym) -- should be saved as constant so it only gets calculated once per noodle
+        let distanceMD = utilities.getDistanceBetween2DPoints(xm, xd, ym, yd);
+        let distanceND = utilities.getDistanceBetween2DPoints(xn, xd, yn, yd);
+        let rotation = distanceMD >= distanceND ? -(Math.PI/2) : (Math.PI/2); //so its at a tangent to the center of the previous circle
+    
+        let startIncrement = 0; 
+        let angleSum = prevSection.angleSum + prevSection.endAngle; 
+        
+            
+        //xt is tangent along previous semicircle at 90 degrees or -90 degrees from start at 0
+        let prevStartAngle = prevSection.startAngle; 
+        let prevEndAngle = prevSection.endAngle
+        let prevAngleDiff = prevEndAngle - prevStartAngle; 
+        xt = prevSection.xc + (prevSection.rc*Math.cos(prevSection.angleSum+rotation));
+        yt = prevSection.yc + (prevSection.rc*Math.sin(prevSection.angleSum+rotation)); 
+        rc = prevSection.rc;
+        startIncrement = prevSection.startIncrement || startIncrement; 
+
+        //transform (xt, yt) coordinates secondCircleRadius away in a 90 degree direction
+        let thetaC1 = 0;
+
+        //rotation = alternateRotation ? -rotation : rotation; //draw circle center outwards of prev circle if alternate rotation
+        
+
+        startIncrement = alternateRotation ? startIncrement - rotation : startIncrement; 
+
+        let newStartAngle = 0 //angleSum - (Math.PI/2) + startIncrement;
+        let newEndAngle = 2*Math.PI//angleSum + startIncrement;
+
+        // if(distanceMD >= distanceND){
+        //     //reverse the start angles
+        //     newStartAngle =  angleSum + startIncrement;
+        //     newEndAngle = angleSum + (Math.PI/2) + startIncrement;
+        // }
+
+        let angleAdjustment = alternateRotation ? -90 : -90; 
+        let rc1 = utilities.generateRandomInteger(this.minRadius, 90); 
+        if(!prevSection.genesis){
+            angleAdjustment = distanceMD >= distanceND ? angleAdjustment : -angleAdjustment; 
+            angleSum = angleSum+angleAdjustment*(Math.PI/180); 
+        }else{
+            angleSum = prevSection.angleSum -90*(Math.PI/180); //for first circle 
+        }
+        
+        let xc1 = (xt)+(rc1*Math.cos(angleSum)); 
+        let yc1 = (yt)+(rc1*Math.sin(angleSum));
+
+        startIncrement = distanceMD >= distanceND ? (90* (Math.PI / 180)) : (-90* (Math.PI / 180))
+
+        // let prevStrokeStyle = this.ctx.strokeStyle; 
+        this.ctx.strokeStyle = distanceMD >= distanceND ?  'green' : 'blue'; //green for md, blue for nd
+        this.ctx.beginPath();
+        this.ctx.moveTo(xt,yt); 
+        this.ctx.lineTo(xc1, yc1); 
+        this.ctx.stroke(); 
+
+        //for caculating if new yc1 and yc2 are out of bounds
+        // let boundaryX = XC + rc*Math.cos(angleSum);
+        // let boundaryY = YC + rc*Math.sin(angleSum);
+
+        // this.ctx.strokeStyle = 'red'; //green for md, blue for nd
+        // this.ctx.beginPath();
+        // this.ctx.moveTo(boundaryX,boundaryY); 
+        // this.ctx.lineTo(xc1, yc1); 
+        // this.ctx.stroke();
+        
+
+        return {
+            rc1,
+            xc1,
+            yc1,
+            newStartAngle,
+            newEndAngle,
+            rotation,
+            angleSum,
+            startIncrement,
+            thetaC1
+        };
+
         
     }
 }
