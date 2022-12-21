@@ -32,8 +32,8 @@ class NoodleApp extends React.Component {
       super(props)
       this.state = {
           canvasParameters: {
-              height: 500,
-              width: 500, 
+              height: 700,
+              width: 700, 
           },
           noodleParameters: {
               noodleCount: 2,
@@ -120,11 +120,16 @@ class NoodleApp extends React.Component {
                         <label htmlFor='width'>
                             Noodle width
                         </label>
-                        <input name='width' type='number' value={this.state.noodleParameters.width} />
+                        <input 
+                            name='width' 
+                            type='number' 
+                            value={this.state.noodleParameters.width} 
+                            onChange={this.handleChange} 
+                            />
                     </div>
                     
 
-                    <div className='option'>
+                    {/* <div className='option'>
                         <label htmlFor='minLength'>
                             Noodle min length
                         </label>
@@ -137,14 +142,19 @@ class NoodleApp extends React.Component {
                             Noodle max length
                         </label>
                         <input name='maxLength' type='number' defaultValue={this.state.noodleParameters.maxLength} />
-                    </div>
+                    </div> */}
                     
 
                     <div className='option'>
                         <label htmlFor='minRadius'>
                             Noodle min bend radius
                         </label>
-                        <input name='minRadius' type='number' defaultValue={this.state.noodleParameters.minRadius} /> 
+                        <input 
+                            name='minRadius' 
+                            type='number' 
+                            defaultValue={this.state.noodleParameters.minRadius} 
+                            onChange={this.handleChange}
+                            /> 
                     </div>
 
                     <button type='submit'>
@@ -192,8 +202,8 @@ export default App;
 //noodle canvas code here
 console.log('script js has been loaded');
 
-const gridHeight = 500;
-const gridWidth = 500; 
+const gridHeight = 700;
+const gridWidth = 700; 
 const defaultNoodleParams = {
     noodleCount: 1,
     width: 20,
@@ -337,9 +347,26 @@ class NoodleBowl {
         ctx.arc(this.xCoord, this.yCoord, this.radius-this.thickness, 0, 2 * Math.PI); //note angles in arc function are in radians -  so would need to convert if passed as degrees from user
         ctx.stroke();
 
+        //get values for inner circle to establish boundary
+        let calcAngle = 0; 
+        let boundaryCoordinates=[]; 
+        let calcRadius = (this.radius);
+        while(calcAngle < 360){
+
+            let angle = calcAngle * (Math.PI/180);
+            let x = this.xCoord + calcRadius*Math.cos(angle);
+            let y = this.yCoord + calcRadius*Math.sin(angle);
+
+            boundaryCoordinates.push({
+                x,y
+            });
+
+            calcAngle += 20; //the lower this value the less likely noodles are to go out of bounds 
+        }
+
         //noodles should be drawn within bowl - it makes more sense than drawing them from canvas class 
         let noodles = [];
-        let noodleCount = this.noodleParams.noodleCount || 450; //ideal amount of noodles seems to be 450
+        let noodleCount = this.noodleParams.noodleCount || 330; //ideal amount of noodles seems to be 330
         let alternateOdds = 3; 
         for(var i = 0; i < noodleCount ; i++){
 
@@ -349,7 +376,8 @@ class NoodleBowl {
                 boundaryCircle: {
                     x: this.xCoord,
                     y: this.yCoord,
-                    radius: this.radius-this.thickness
+                    radius: this.radius-this.thickness,
+                    boundaryCoordinates
                 }
             });
 
@@ -359,12 +387,16 @@ class NoodleBowl {
             noodle.drawSection(1);
             noodle.drawNCircleSection();
 
-            let alternate = utilities.generateRandomInteger(0,alternateOdds) === alternateOdds;
-            noodle.drawNextCircleSection(alternate);
-            noodle.drawNextCircleSection(alternate); 
-            noodle.drawNextCircleSection(alternate); 
-            // noodle.drawNextCircleSection(alternate); 
-            // noodle.drawNextCircleSection(alternate); 
+            let proceed = true;
+            let count = 0;
+
+            while(proceed && count < 3){
+
+                proceed = noodle.drawNextCircleSection();
+                count++; 
+
+            }
+             
             
         }
         
@@ -668,7 +700,23 @@ class Noodle {
         let index = this.additionCircleSections.length; //lengths don't start at 0 like arrays. 
         let prevSection = this.additionCircleSections[index-1]
         console.log('index: ', index, ' prevSection: ', prevSection);
-        let {rc1, xc1, yc1, newStartAngle, newEndAngle, rotation, angleSum , startIncrement, thetaC1} = this.#getNextSectionParameters2(prevSection, alternateRotation);
+        let {
+            rc1, 
+            xc1, 
+            yc1, 
+            newStartAngle, 
+            newEndAngle, 
+            rotation, 
+            angleSum , 
+            startIncrement, 
+            thetaC1,
+            withinBounds
+        } = this.#getNextSectionParameters(prevSection, alternateRotation);
+
+        if(!withinBounds){
+            //end noodle
+            return false;
+        }
 
         //check if any point in the new semi-circle (i.e only for start and end angles) colides with boundary. 
         //If so - reverse the rotation. And check again. If still colides, don't draw
@@ -697,6 +745,10 @@ class Noodle {
         let length = angleDiff*rc1;
         angleSum = angleSum+rotation-(180* (Math.PI / 180)); 
 
+        if(prevSection.alternateRotation && !alternateRotation){
+            alternateRotation = prevSection.alternateRotation
+        } 
+
         this.additionCircleSections.push({
             rc: rc1,
             xc: xc1,
@@ -707,8 +759,11 @@ class Noodle {
             angleSum,
             rotation: rotation || 0,
             startIncrement ,
-            length
+            length,
+            alternateRotation
         });
+
+        return true;
 
         //demo line
         // let prevStrokeStyle = this.ctx.strokeStyle; 
@@ -747,89 +802,8 @@ class Noodle {
     #getNextSectionParameters (prevSection, alternateRotation = false) {
         /*Calculates next parameters given the previous parameters */
 
-        let xm = this.circleSectionCoordinates.startPoint.x;
-        let ym = this.circleSectionCoordinates.startPoint.y;
 
-        let xn = this.circleSectionCoordinates.endPoint.x;
-        let yn = this.circleSectionCoordinates.endPoint.y;
-
-        let xd = this.circleSectionCoordinates.bowlContact.x;
-        let yd = this.circleSectionCoordinates.bowlContact.y;
-
-        let rc = this.circleSectionCoordinates.radius;
-        let angle = this.circleSectionCoordinates.startAngle; 
-
-        let xt = this.circleSectionCoordinates.pointOnTangent.x;
-        let yt = this.circleSectionCoordinates.pointOnTangent.y;
-        let thetaT = this.circleSectionCoordinates.pointOnTangent.thetaT; 
-
-        //calculate distances between (xm, ym) -- should be saved as constant so it only gets calculated once per noodle
-        let distanceMD = utilities.getDistanceBetween2DPoints(xm, xd, ym, yd);
-        let distanceND = utilities.getDistanceBetween2DPoints(xn, xd, yn, yd);
-        let rotation = distanceMD >= distanceND ? -(Math.PI/2) : (Math.PI/2);
-        
-        let prevStartAngle = rotation; 
-        let prevEndAngle = rotation; 
-        let startIncrement = 0; 
-
-        
-            
-        //xt is tangent along previous semicircle at 90 degrees or -90 degrees from start at 0
-        prevStartAngle = prevSection.startAngle; 
-        prevEndAngle = prevSection.endAngle
-        let prevAngleDiff = prevEndAngle - prevStartAngle; 
-        xt = prevSection.xc + (prevSection.rc*Math.cos(prevSection.angleSum+rotation));
-        yt = prevSection.yc + (prevSection.rc*Math.sin(prevSection.angleSum+rotation)); 
-        rc = prevSection.rc;
-        startIncrement = prevSection.startIncrement || startIncrement; 
-        
-        thetaT = prevSection.angleSum; 
-
-        
-
-        
-
-        //transform (xt, yt) coordinates secondCircleRadius away in a 90 degree direction
-        let angleAdjustment = distanceMD >= distanceND ? 90 : -90; 
-        let thetaC1 = 0;
-
-        rotation = alternateRotation ? -rotation : rotation; //draw circle center outwards of prev circle if alternate rotation
-        let angleSum = thetaT; 
-
-        startIncrement = alternateRotation ? startIncrement - rotation : startIncrement; 
-
-        let newStartAngle =  angleSum - (Math.PI/2) + startIncrement;
-        let newEndAngle = angleSum + startIncrement;
-
-        if(distanceMD >= distanceND){
-            //reverse the start angles
-            newStartAngle =  angleSum + startIncrement;
-            newEndAngle = angleSum + (Math.PI/2) + startIncrement;
-        }
-
-        let rc1 = utilities.generateRandomInteger(this.minRadius, 90); 
-        
-        let xc1 = (xt)+(rc1*Math.cos(angleSum+rotation)); 
-        let yc1 = (yt)+(rc1*Math.sin(angleSum+rotation));
-
-        startIncrement = distanceMD >= distanceND ? (90* (Math.PI / 180)) : (-90* (Math.PI / 180))
-        return {
-            rc1,
-            xc1,
-            yc1,
-            newStartAngle,
-            newEndAngle,
-            rotation,
-            angleSum,
-            startIncrement,
-            thetaC1,
-        };
-    }
-
-    #getNextSectionParameters2 (prevSection, alternateRotation = false) {
-        /*Calculates next parameters given the previous parameters */
-
-
+        console.log('Alternate rotation: ', alternateRotation);
         let XC = this.circleSectionCoordinates.center.x; //bowl center x
         let YC = this.circleSectionCoordinates.center.y; //bowl center y
 
@@ -852,13 +826,13 @@ class Noodle {
         //calculate distances between (xm, ym) -- should be saved as constant so it only gets calculated once per noodle
         let distanceMD = utilities.getDistanceBetween2DPoints(xm, xd, ym, yd);
         let distanceND = utilities.getDistanceBetween2DPoints(xn, xd, yn, yd);
-        let rotation = distanceMD >= distanceND ? -(Math.PI/2) : (Math.PI/2); //so its at a tangent to the center of the previous circle
+        let mdFlip = distanceMD >= distanceND; 
 
-        // if(!prevSection.genesis){
+        let rotationFlip = distanceMD >= distanceND; 
 
-        //     rotation = distanceMD >= distanceND ? -45*(Math.PI/180) : 45*(Math.PI/180);
+        let rotation = rotationFlip ? -(Math.PI/2) : (Math.PI/2); //so its at a tangent to the center of the previous circle
 
-        // }
+        let flippedRotation = -rotation; 
     
         let startIncrement = 0; 
         let angleSum = prevSection.angleSum + prevSection.endAngle; 
@@ -876,40 +850,47 @@ class Noodle {
         //transform (xt, yt) coordinates secondCircleRadius away in a 90 degree direction
         let thetaC1 = 0;
 
-        //rotation = alternateRotation ? -rotation : rotation; //draw circle center outwards of prev circle if alternate rotation
-        
-
         startIncrement = alternateRotation ? startIncrement - rotation : startIncrement; 
 
         let newStartAngle = 0 //angleSum - (Math.PI/2) + startIncrement;
         let newEndAngle = 2*Math.PI//angleSum + startIncrement;
 
-        let startAdjustment = distanceMD >= distanceND ? 0 : (Math.PI);
-        let endAdjustment = distanceMD >= distanceND ? (Math.PI) : -(Math.PI);
+        let startAdjustment = mdFlip ? 0 : (Math.PI);
+        let endAdjustment = mdFlip ? (Math.PI) : -(Math.PI);
 
         if(!prevSection.genesis){
 
             let mdStartAdjustment = this.additionCircleSections.length % 2 === 0 ? (Math.PI) : 0;
             let mdEndAjustment = this.additionCircleSections.length % 2 === 0 ? 0 : (Math.PI); 
 
-            startAdjustment = distanceMD >= distanceND ? mdStartAdjustment : (Math.PI);
-            endAdjustment = distanceMD >= distanceND ? mdEndAjustment : -(Math.PI);
+            // let localFlip = prevSection.alternateRotation ? !mdFlip : mdFlip; 
+            startAdjustment = mdFlip ? mdStartAdjustment : (Math.PI);
+            endAdjustment = mdFlip ? mdEndAjustment : -(Math.PI);
+
+            if(prevSection.alternateRotation){
+
+                console.log('prev section alternate rotation');
+                startAdjustment = mdFlip ? 0 : (Math.PI);
+                endAdjustment = mdFlip ? (Math.PI) : -(Math.PI);
+                startAdjustment = !mdFlip ? mdStartAdjustment : (Math.PI);
+               
+            }
         }
-
-        //TODO: 20/12/2022 CURRENT FOCUS HERE
         newStartAngle = prevSection.angleSum+rotation+startAdjustment;
-        newEndAngle = distanceMD >= distanceND ? prevSection.angleSum+rotation+endAdjustment : prevSection.angleSum+rotation;
+        newEndAngle = mdFlip ? prevSection.angleSum+rotation+endAdjustment : prevSection.angleSum+rotation;
 
-        // if(distanceMD >= distanceND){
-        //     //reverse the start angles
-        //     newStartAngle =  angleSum + startIncrement;
-        //     newEndAngle = angleSum + (Math.PI/2) + startIncrement;
-        // }
+        if(prevSection.alternateRotation){
+
+            console.log('prev section alternate rotation');
+            newEndAngle = !mdFlip ? prevSection.angleSum+rotation+endAdjustment : prevSection.angleSum+rotation;
+           
+        }
 
         let angleAdjustment = 90; 
         let rc1 = utilities.generateRandomInteger(this.minRadius, 90); //calculate so that perimeter is within length limit
         if(!prevSection.genesis){
-            angleAdjustment = distanceMD >= distanceND ? -90 : -90; 
+            angleAdjustment = alternateRotation? 90 : -90;
+
             angleSum = prevSection.angleSum+angleAdjustment*(Math.PI/180); 
         }else{
             angleSum = prevSection.angleSum -90*(Math.PI/180); //for first circle 
@@ -918,25 +899,16 @@ class Noodle {
         let xc1 = (xt)+(rc1*Math.cos(angleSum)); 
         let yc1 = (yt)+(rc1*Math.sin(angleSum));
 
-        startIncrement = distanceMD >= distanceND ? (90* (Math.PI / 180)) : (-90* (Math.PI / 180))
+        startIncrement = mdFlip ? (90* (Math.PI / 180)) : (-90* (Math.PI / 180))
 
         // let prevStrokeStyle = this.ctx.strokeStyle; 
-        this.ctx.strokeStyle = distanceMD >= distanceND ?  'green' : 'blue'; //green for md, blue for nd
-        this.ctx.beginPath();
-        this.ctx.moveTo(xt,yt); 
-        this.ctx.lineTo(xc1, yc1); 
-        this.ctx.stroke(); 
-
-        //for caculating if new yc1 and yc2 are out of bounds
-        // let boundaryX = XC + rc*Math.cos(angleSum);
-        // let boundaryY = YC + rc*Math.sin(angleSum);
-
-        // this.ctx.strokeStyle = 'red'; //green for md, blue for nd
+        // this.ctx.strokeStyle = mdFlip?  'green' : 'blue'; //green for md, blue for nd
         // this.ctx.beginPath();
-        // this.ctx.moveTo(boundaryX,boundaryY); 
+        // this.ctx.moveTo(xt,yt); 
         // this.ctx.lineTo(xc1, yc1); 
-        // this.ctx.stroke();
-        
+        // this.ctx.stroke(); 
+
+        let withinBounds = this.#checkBoundary({xc:xc1, yc:yc1, rc: rc1});
 
         return {
             rc1,
@@ -947,10 +919,39 @@ class Noodle {
             rotation,
             angleSum,
             startIncrement,
-            thetaC1
+            thetaC1,
+            withinBounds
         };
 
         
+    }
+
+
+    #checkBoundary ({xc, yc, rc}) {
+
+        /*
+            This is the function responsible for the performance hit,
+            as it effectively iterates 18 points for each noodle. 
+
+            This would be the first stop at optimisation
+        */
+
+        let widthinBounds = true;
+        let tolerance = rc+20; 
+        let coords = this.boundaryCircle.boundaryCoordinates;
+
+        for(let i = 0, length = coords.length; i< length; i++){
+
+            let distance = utilities.getDistanceBetween2DPoints(coords[i].x, xc,coords[i].y, yc);
+            if(distance < tolerance){
+                widthinBounds = false; 
+
+                break;
+            }
+        }
+
+        return widthinBounds; 
+
     }
 }
 
