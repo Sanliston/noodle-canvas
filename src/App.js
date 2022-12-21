@@ -762,25 +762,8 @@ class Noodle {
 
     #getNextSectionParameters (prevSection, alternateRotation = false) {
         /*Calculates next parameters given the previous parameters */
-
-        let XC = this.circleSectionCoordinates.center.x; //bowl center x
-        let YC = this.circleSectionCoordinates.center.y; //bowl center y
-
-        let xm = this.circleSectionCoordinates.startPoint.x;
-        let ym = this.circleSectionCoordinates.startPoint.y;
-
-        let xn = this.circleSectionCoordinates.endPoint.x;
-        let yn = this.circleSectionCoordinates.endPoint.y;
-
-        let xd = this.circleSectionCoordinates.bowlContact.x;
-        let yd = this.circleSectionCoordinates.bowlContact.y;
-
-        let rc = this.circleSectionCoordinates.radius;
-        let angle = this.circleSectionCoordinates.startAngle; 
-
         let xt = this.circleSectionCoordinates.pointOnTangent.x;
         let yt = this.circleSectionCoordinates.pointOnTangent.y;
-        let thetaT = this.circleSectionCoordinates.pointOnTangent.thetaT; 
 
         //calculate distances between (xm, ym) -- should be saved as constant so it only gets calculated once per noodle
         let distanceMD = this.circleSectionCoordinates.distanceMD;
@@ -790,20 +773,14 @@ class Noodle {
         let rotationFlip = distanceMD >= distanceND; 
 
         let rotation = rotationFlip ? -(Math.PI/2) : (Math.PI/2); //so its at a tangent to the center of the previous circle
-
-        let flippedRotation = -rotation; 
     
         let startIncrement = 0; 
         let angleSum = prevSection.angleSum + prevSection.endAngle; 
         
             
         //xt is tangent along previous semicircle at 90 degrees or -90 degrees from start at 0
-        let prevStartAngle = prevSection.startAngle; 
-        let prevEndAngle = prevSection.endAngle
-        let prevAngleDiff = prevEndAngle - prevStartAngle; 
         xt = prevSection.xc + (prevSection.rc*Math.cos(prevSection.angleSum+rotation));
         yt = prevSection.yc + (prevSection.rc*Math.sin(prevSection.angleSum+rotation)); 
-        rc = prevSection.rc;
         startIncrement = prevSection.startIncrement || startIncrement; 
 
         //transform (xt, yt) coordinates secondCircleRadius away in a 90 degree direction
