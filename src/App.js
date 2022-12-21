@@ -36,8 +36,8 @@ class NoodleApp extends React.Component {
               width: 700, 
           },
           noodleParameters: {
-              noodleCount: 2,
-              width: 20,
+              noodleCount: 350,
+              width: 10,
               minLength: 100,
               maxLength: 200,
               minRadius: 30
@@ -126,7 +126,9 @@ class NoodleApp extends React.Component {
                     </div>
                     
 
-                    {/* <div className='option'>
+                    {/* Commented out as implementation couldn't be finished in time
+                    
+                    <div className='option'>
                         <label htmlFor='minLength'>
                             Noodle min length
                         </label>
@@ -144,7 +146,7 @@ class NoodleApp extends React.Component {
 
                     <div className='option'>
                         <label htmlFor='minRadius'>
-                            Noodle min bend radius
+                            Noodle min bend radius (degrees)
                         </label>
                         <input 
                             name='minRadius' 
@@ -198,8 +200,8 @@ export default App;
 const gridHeight = 700;
 const gridWidth = 700; 
 const defaultNoodleParams = {
-    noodleCount: 1,
-    width: 20,
+    noodleCount: 350,
+    width: 10,
     minLength: 100,
     maxLength: 200,
     minRadius: 30
@@ -286,7 +288,7 @@ class NoodleBowl {
     constructor (options = {
         xCoord: gridWidth/2,
         yCoord: gridHeight/2,
-        thickness: 5, 
+        thickness: 10, 
         radius: (gridHeight-20)/2, 
         noodleParams: defaultNoodleParams, 
         styles: {}
@@ -296,8 +298,6 @@ class NoodleBowl {
         this.noodleParams = noodleParams || this.noodleParams; 
         this.xCoord = xCoord || this.xCoord;
         this.yCoord = yCoord || this.yCoord; 
-
-        console.log('this radius: ', this.radius, ' radius: ', radius, ' gridHeight: ', gridHeight, ' gridHeight/2: ', gridHeight/2);
         this.radius = radius || this.radius;
         this.thickness = thickness || this.thickness;
         this.styles = styles || this.styles;
@@ -307,18 +307,15 @@ class NoodleBowl {
         let ctx = this.ctx; 
 
         //fill space in between
-        let prevLineWidth = ctx.lineWidth;
-        let prevStrokeStyle = ctx.strokeStyle; 
-
-        ctx.lineWidth = this.thickness; 
+        ctx.lineWidth = 10; 
         ctx.strokeStyle = 'gray';
         
         ctx.beginPath();
-        ctx.arc(this.xCoord, this.yCoord, this.radius-(this.thickness/2), 0, 2 * Math.PI); //note angles in arc function are in radians -  so would need to convert if passed as degrees from user
+        ctx.arc(this.xCoord, this.yCoord, this.radius-(ctx.lineWidth/2), 0, 2 * Math.PI); //note angles in arc function are in radians -  so would need to convert if passed as degrees from user
         ctx.stroke();
 
-        ctx.lineWidth = prevLineWidth;
-        ctx.strokeStyle = prevStrokeStyle;
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'black';
 
         //outter circle
         ctx.beginPath();
@@ -327,7 +324,7 @@ class NoodleBowl {
 
         //inner circle
         ctx.beginPath();
-        ctx.arc(this.xCoord, this.yCoord, this.radius-this.thickness, 0, 2 * Math.PI); //note angles in arc function are in radians -  so would need to convert if passed as degrees from user
+        ctx.arc(this.xCoord, this.yCoord, this.radius-10, 0, 2 * Math.PI); //note angles in arc function are in radians -  so would need to convert if passed as degrees from user
         ctx.stroke();
 
         //get values for inner circle to establish boundary
@@ -350,7 +347,6 @@ class NoodleBowl {
         //noodles should be drawn within bowl - it makes more sense than drawing them from canvas class 
         let noodles = [];
         let noodleCount = this.noodleParams.noodleCount || 330; //ideal amount of noodles seems to be 330
-        let alternateOdds = 3; 
         for(var i = 0; i < noodleCount ; i++){
 
             let noodle = new Noodle({
@@ -366,9 +362,7 @@ class NoodleBowl {
 
             noodles.push(noodle);
             noodle.draw(); 
-            
-             
-            
+   
         }
         
     }
@@ -392,11 +386,11 @@ class Noodle {
         this.maxLength = maxLength;
         this.minRadius = Number(minRadius); 
         this.boundaryCircle = boundaryCircle;
-
-        console.log('noodle params: ', this);
     }
 
     draw () {
+
+        this.ctx.strokeStyle = 'black';
 
         //draws all sections at once
         this.drawInitialSection();
@@ -438,7 +432,7 @@ class Noodle {
         */
 
         let r = utilities.generateRandomInteger(this.minRadius, this.minRadius+50); 
-        this.ctx.lineWidth = 10; 
+        this.ctx.lineWidth = this.width; 
 
         let distance = this.boundaryCircle.radius - r - (this.ctx.lineWidth/2); 
         let angle = utilities.generateRandomInteger(0,360); //to be randomly generated - TODO: strategically randomly generate for each 20degrees in a 360 circle so whole bowl is covered
@@ -475,7 +469,7 @@ class Noodle {
         let prevGlobalCompisiteOperation = this.ctx.globalCompositeOperation;
 
         this.ctx.globalCompositeOperation = 'destination-out'; 
-        this.ctx.lineWidth = 8;
+        this.ctx.lineWidth = this.width - 2;
         this.ctx.beginPath();
         this.ctx.arc(xc, yc, r, startAngle, endAngle);
         this.ctx.stroke();
@@ -567,7 +561,7 @@ class Noodle {
         let prevGlobalCompisiteOperation = this.ctx.globalCompositeOperation;
 
         this.ctx.globalCompositeOperation = 'destination-out'; 
-        this.ctx.lineWidth = 8;
+        this.ctx.lineWidth = this.width - 2;
         this.ctx.beginPath();
         this.ctx.moveTo(x, y);
         this.ctx.lineTo(xt,yt);
@@ -629,7 +623,7 @@ class Noodle {
         let prevGlobalCompisiteOperation = this.ctx.globalCompositeOperation;
 
         this.ctx.globalCompositeOperation = 'destination-out'; 
-        this.ctx.lineWidth = 8;
+        this.ctx.lineWidth = this.width - 2;
         this.ctx.beginPath();
         this.ctx.arc(xc1, yc1, rc1, newStartAngle, newEndAngle);
         this.ctx.stroke();
@@ -698,7 +692,7 @@ class Noodle {
         let prevGlobalCompisiteOperation = this.ctx.globalCompositeOperation;
 
         this.ctx.globalCompositeOperation = 'destination-out'; 
-        this.ctx.lineWidth = 8;
+        this.ctx.lineWidth = this.width - 2;
         this.ctx.beginPath();
         this.ctx.arc(xc1, yc1, rc1, newStartAngle, newEndAngle, counterClockwise);
         this.ctx.stroke();
@@ -932,7 +926,7 @@ class Noodle {
         */
 
         let widthinBounds = true;
-        let tolerance = rc+28; 
+        let tolerance = rc+30; 
         let coords = this.boundaryCircle.boundaryCoordinates;
 
         for(let i = 0, length = coords.length; i< length; i++){
