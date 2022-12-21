@@ -362,7 +362,7 @@ class NoodleBowl {
             let alternate = utilities.generateRandomInteger(0,alternateOdds) === alternateOdds;
             noodle.drawNextCircleSection(alternate);
             noodle.drawNextCircleSection(alternate); 
-            // noodle.drawNextCircleSection(alternate); 
+            noodle.drawNextCircleSection(alternate); 
             // noodle.drawNextCircleSection(alternate); 
             // noodle.drawNextCircleSection(alternate); 
             
@@ -668,14 +668,15 @@ class Noodle {
         let index = this.additionCircleSections.length; //lengths don't start at 0 like arrays. 
         let prevSection = this.additionCircleSections[index-1]
         console.log('index: ', index, ' prevSection: ', prevSection);
-        let {rc1, xc1, yc1, newStartAngle, newEndAngle, rotation, angleSum , startIncrement, thetaC1} = this.#getNextSectionParameters2(prevSection);
+        let {rc1, xc1, yc1, newStartAngle, newEndAngle, rotation, angleSum , startIncrement, thetaC1} = this.#getNextSectionParameters2(prevSection, alternateRotation);
 
         //check if any point in the new semi-circle (i.e only for start and end angles) colides with boundary. 
         //If so - reverse the rotation. And check again. If still colides, don't draw
+        let counterClockwise = false; 
 
         console.log('xc1: ', xc1, ' yc1: ', yc1);
         this.ctx.beginPath();
-        this.ctx.arc(xc1, yc1, rc1, newStartAngle, newEndAngle);
+        this.ctx.arc(xc1, yc1, rc1, newStartAngle, newEndAngle, counterClockwise);
         this.ctx.stroke();
 
         let prevLineWidth = this.ctx.lineWidth; 
@@ -684,7 +685,7 @@ class Noodle {
         this.ctx.globalCompositeOperation = 'destination-out'; 
         this.ctx.lineWidth = 8;
         this.ctx.beginPath();
-        this.ctx.arc(xc1, yc1, rc1, newStartAngle, newEndAngle);
+        this.ctx.arc(xc1, yc1, rc1, newStartAngle, newEndAngle, counterClockwise);
         this.ctx.stroke();
 
         this.ctx.lineWidth = prevLineWidth;
@@ -883,17 +884,21 @@ class Noodle {
         let newStartAngle = 0 //angleSum - (Math.PI/2) + startIncrement;
         let newEndAngle = 2*Math.PI//angleSum + startIncrement;
 
-        let startAdjustment = distanceMD >= distanceND ? -(Math.PI/2) : (Math.PI);
+        let startAdjustment = distanceMD >= distanceND ? 0 : (Math.PI);
         let endAdjustment = distanceMD >= distanceND ? (Math.PI) : -(Math.PI);
 
         if(!prevSection.genesis){
-            startAdjustment = distanceMD >= distanceND ? -(Math.PI/2)+(Math.PI) : (Math.PI);
-            endAdjustment = distanceMD >= distanceND ? (Math.PI) : -(Math.PI);
+
+            let mdStartAdjustment = this.additionCircleSections.length % 2 === 0 ? (Math.PI) : 0;
+            let mdEndAjustment = this.additionCircleSections.length % 2 === 0 ? 0 : (Math.PI); 
+
+            startAdjustment = distanceMD >= distanceND ? mdStartAdjustment : (Math.PI);
+            endAdjustment = distanceMD >= distanceND ? mdEndAjustment : -(Math.PI);
         }
 
         //TODO: 20/12/2022 CURRENT FOCUS HERE
         newStartAngle = prevSection.angleSum+rotation+startAdjustment;
-        newEndAngle = distanceMD >= distanceND ? prevSection.angleSum+rotation-(Math.PI) : prevSection.angleSum+rotation;
+        newEndAngle = distanceMD >= distanceND ? prevSection.angleSum+rotation+endAdjustment : prevSection.angleSum+rotation;
 
         // if(distanceMD >= distanceND){
         //     //reverse the start angles
@@ -902,7 +907,7 @@ class Noodle {
         // }
 
         let angleAdjustment = 90; 
-        let rc1 = utilities.generateRandomInteger(this.minRadius, 90); 
+        let rc1 = utilities.generateRandomInteger(this.minRadius, 90); //calculate so that perimeter is within length limit
         if(!prevSection.genesis){
             angleAdjustment = distanceMD >= distanceND ? -90 : -90; 
             angleSum = prevSection.angleSum+angleAdjustment*(Math.PI/180); 
